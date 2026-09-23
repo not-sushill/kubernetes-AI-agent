@@ -1,0 +1,8 @@
+{
+  "id": "20260923T065729144538Z",
+  "context": "arn:aws:eks:ap-south-1:134176758113:cluster/agarwaleks",
+  "namespace": "dev-kafka",
+  "deployment": "kafka-app",
+  "created_at": "2026-09-23T06:57:29.144538+00:00",
+  "reason": "pre-apply-backup"
+}

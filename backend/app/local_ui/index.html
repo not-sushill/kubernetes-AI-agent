@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kubernetes Investigation Console</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#172b42;background:#f2f5fa}*{box-sizing:border-box}body{margin:0}header{background:#12283f;color:white;padding:24px 5%}header p{color:#becde0}main{max-width:1300px;margin:auto;padding:24px;display:grid;grid-template-columns:320px 1fr;gap:24px}section,.card{background:white;border:1px solid #dbe3ed;border-radius:12px;padding:20px;margin-bottom:16px}h1{font-size:24px;margin:0}h2{font-size:19px}h3{font-size:16px}label{display:block;margin:14px 0 6px}input,select,button{font:inherit;padding:10px;border:1px solid #acbcd0;border-radius:6px;width:100%}button{cursor:pointer;background:#1264b3;color:white;margin-top:14px;border:0}button:disabled{opacity:.5;cursor:wait}input[type=checkbox]{width:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f6fa;padding:12px;max-height:400px;overflow:auto;font-size:12px}.muted{color:#586a7e;font-size:14px}.badge{display:inline-block;background:#e5eef8;padding:5px 10px;border-radius:15px;font-size:13px}.critical{border-left:5px solid #c53030}.warning,.high{border-left:5px solid #c47f12}.info{border-left:5px solid #307ebc}#progress{white-space:pre-wrap}a{color:#146bb4}header a{color:#c4e2ff}.row{display:flex;gap:8px}.row button{width:auto;flex:1}summary{cursor:pointer;padding:8px 0}#history button{background:#eef4fb;color:#173d64;text-align:left;font-size:13px;overflow-wrap:anywhere}#error{color:#9d2323;white-space:pre-wrap}@media(max-width:800px){main{grid-template-columns:1fr}}
+</style>
+<header><h1>Kubernetes Investigation Console</h1><p>Local evidence collection · deterministic findings · Ollama explanations</p><span id="health">Checking backend…</span> · <a href="/docs">API documentation</a></header>
+<main><aside><section><h2>New investigation</h2><p class="muted">Uses the backend's current kubectl context. Confirm your intended context before starting.</p><form id="form">
+<label for="namespace">Namespace</label><input id="namespace" value="default" required>
+<label for="kind">Resource type</label><select id="kind"><option>deployment</option><option>pod</option><option>service</option><option>namespace</option></select>
+<label for="name">Resource name</label><input id="name" placeholder="apache-basic-auth" required>
+<label for="tail">Log lines per container</label><input id="tail" type="number" min="0" max="5000" value="100">
+<label><input type="checkbox" id="previous" checked> Include previous logs when applicable</label>
+<button id="run">Run investigation</button></form><p id="progress" role="status" aria-live="polite"></p><p id="error" role="alert"></p></section>
+<section><h2>History</h2><label for="search">Search saved investigations</label><input id="search" placeholder="Resource or namespace"><button id="refresh">Search / refresh</button><div id="history"></div><div class="row"><button id="back">Previous</button><button id="next">Next</button></div><p id="page" class="muted"></p></section></aside>
+<article><section id="empty"><h2>Start with one workload</h2><p>Choose a deployment, pod or service to collect focused evidence. Namespace investigations cover more resources and may take longer.</p><p class="muted">COMPLETED describes evidence collection, not workload health. AI explanations are interpretations; inspect the recorded evidence before acting.</p></section><div id="result"></div></article></main>
+<script>
+const $=id=>document.getElementById(id);
+let page=1,busy=false,selected=null;
+async function api(path,options={}){
+ const r=await fetch('/api/v1/investigations'+path,options);
+ const data=await r.json();
+ if(!r.ok)throw Error(typeof data.detail==='string'?data.detail:JSON.stringify(data));
+ return data;
+}
+function el(tag,text,cls){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n}
+function list(parent,title,items){if(!items?.length)return;parent.append(el('h3',title));const ul=el('ul');for(const item of items)ul.append(el('li',typeof item==='string'?item:JSON.stringify(item)));parent.append(ul)}
+function render(data){
+ selected=data; $('empty').hidden=true; const root=$('result');root.replaceChildren();
+ const top=el('section');top.append(el('h2',data.target?.resource_type+'/'+data.target?.resource_name),el('span',data.status,'badge'));
+ top.append(el('p','Namespace: '+data.target.namespace+' · '+data.id,'muted'));
+ const download=el('button','Export investigation JSON');download.onclick=()=>{
+ const url=URL.createObjectURL(new Blob([JSON.stringify(selected,null,2)],{type:'application/json'}));
+ const a=el('a');a.href=url;a.download='investigation-'+selected.id+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ };top.append(download);root.append(top);
+ const analysis=data.analysis||{};
+ const causes=analysis.root_causes||[];
+ root.append(el('h2','Deterministic findings'));
+ if(!causes.length)root.append(el('p','No root cause established. Review diagnostics and collection limitations.'));
+ for(const cause of causes){
+ const card=el('section',null,'card '+(cause.severity||'info').toLowerCase());
+ card.append(el('h3',cause.title),el('span',(cause.severity||'info').toUpperCase()+' · confidence '+cause.confidence,'badge'));
+ card.append(el('p',cause.description||cause.summary||''));
+ const scope=['pod','container','service','node','deployment'].filter(k=>cause[k]).map(k=>k+': '+cause[k]).join(' · ');
+ if(scope)card.append(el('p',scope,'muted'));
+ list(card,'Evidence',cause.evidence);list(card,'Recommended checks',cause.recommended_actions);root.append(card);
+ }
+ const ai=el('section');ai.append(el('h2','AI explanation'));
+ ai.append(el('p',analysis.ai?.summary||'AI is disabled or no AI result was generated.'));
+ list(ai,'AI limitations',analysis.ai?.limitations);root.append(ai);
+ const ev=el('section');ev.append(el('h2','Collection and diagnostics'));
+ list(ev,'Collection limitations',data.evidence?.limitations);
+ for(const [key,value] of Object.entries(data.evidence||{})){
+ if(value?.error)ev.append(el('p',key+': '+value.error));
+ }
+ for(const [title,value] of [['Diagnostics',analysis.diagnostics],['Full evidence',data.evidence]]){
+ const details=el('details');details.append(el('summary',title),el('pre',JSON.stringify(value,null,2)));ev.append(details);
+ }root.append(ev);
+}
+async function history(){
+ try{
+ const data=await api('?page='+page+'&page_size=10&search='+encodeURIComponent($('search').value));
+ $('history').replaceChildren();
+ for(const item of data.items||[]){
+ const b=el('button',item.resource_type+'/'+item.resource_name+' · '+item.cluster+' · '+item.status);
+ b.disabled=busy;b.onclick=async()=>{try{render(await api('/'+encodeURIComponent(item.id)))}catch(e){$('error').textContent=e.message}};$('history').append(b);
+ }
+ $('page').textContent='Page '+page+' · '+data.total+' saved';$('back').disabled=page===1;
+ $('next').disabled=page*10>=data.total;
+ }catch(e){$('error').textContent=e.message}
+}
+$('kind').onchange=()=>{$('name').disabled=$('kind').value==='namespace';$('name').required=!$('name').disabled};
+$('refresh').onclick=()=>{page=1;history()};$('back').onclick=()=>{page--;history()};$('next').onclick=()=>{page++;history()};
+$('form').onsubmit=async event=>{
+ event.preventDefault();if(busy)return;busy=true;$('run').disabled=true;$('error').textContent='';
+ const started=Date.now();
+ const tick=()=>{$('progress').textContent='Request running · '+Math.floor((Date.now()-started)/1000)+' seconds\nCollecting evidence and, when enabled, generating an explanation. Keep this page open.'};
+ tick();const timer=setInterval(tick,1000);
+ try{
+ const data=await api('',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+ namespace:$('namespace').value.trim(),resource_type:$('kind').value,
+ resource_name:$('kind').value==='namespace'?null:$('name').value.trim(),
+ log_tail:Number($('tail').value),include_previous_logs:$('previous').checked
+ })});
+ render(data);$('progress').textContent='Finished in '+((Date.now()-started)/1000).toFixed(1)+' seconds.';
+ }catch(e){$('error').textContent=e.message+' Refresh history before retrying: a disconnected request may still finish on the server.';$('progress').textContent='Request did not return a result.'}
+ finally{clearInterval(timer);busy=false;$('run').disabled=false;await history()}
+};
+fetch('/api/health').then(r=>{if(!r.ok)throw Error();return r.json()}).then(d=>$('health').textContent='Backend '+d.status).catch(()=>$('health').textContent='Backend unavailable');
+history();
+</script></html>

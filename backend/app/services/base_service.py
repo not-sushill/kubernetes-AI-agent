@@ -1,0 +1,10 @@
+from sqlalchemy.orm import Session
+
+
+class BaseService:
+    """
+    Parent class for every business service.
+    """
+
+    def __init__(self, db: Session):
+        self.db = db
