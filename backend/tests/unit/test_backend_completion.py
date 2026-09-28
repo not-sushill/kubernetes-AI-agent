@@ -424,3 +424,23 @@ def test_timeout_correlation_rejects_old_false_positive_and_keeps_gateway():
     service._detect_timeout([{'category': 'http', 'title': 'HTTP gateway timeout responses detected',
         'evidence': ['"GET / HTTP/1.1" 504 123']}], causes)
     assert len(causes) == 1
+
+
+def test_no_root_cause_does_not_request_speculative_ai_narrative(monkeypatch):
+    monkeypatch.setattr(AIService, '_ai_enabled', staticmethod(lambda: True))
+    client = Mock()
+    client.generate.return_value = json.dumps({'summary': 'High CPU, increased network traffic, Pending pods and elevated latency.'})
+    result = AIService(client).analyze(evidence={'pod': {'status': 'collected', 'data': {'status': 'Running', 'restarts': 0}}})
+    client.generate.assert_not_called()
+    assert result.summary == 'No deterministic root cause was established from the collected evidence.'
+    assert result.confidence == 0
+    assert result.severity == 'INFO'
+    assert not result.root_causes and not result.recommendations
+    assert any('does not establish application health' in x for x in result.limitations)
+
+
+def test_enforcement_discards_unsupported_narrative_without_causes():
+    diagnosis = AIService._parse_diagnosis({'summary': 'High CPU and network traffic caused elevated latency.'})
+    result = AIService._enforce_deterministic_root_causes(diagnosis, [])
+    assert 'High CPU' not in result.summary
+    assert not result.root_causes and not result.recommendations

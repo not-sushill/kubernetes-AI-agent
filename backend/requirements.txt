@@ -27,3 +27,6 @@ mypy==1.17.1
 
 PyYAML>=6.0,<7.0
 
+
+# Native Windows pseudoterminal for interactive kubectl exec
+pywinpty==2.0.15; sys_platform == "win32"

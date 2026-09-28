@@ -7,6 +7,14 @@ import httpx
 from app.core import settings
 
 
+class IncompleteOllamaResponse(ValueError):
+    pass
+
+
+class InvalidOllamaResponse(ValueError):
+    pass
+
+
 class OllamaClient:
     def __init__(
         self,
@@ -39,14 +47,20 @@ class OllamaClient:
         prompt: str,
         *,
         system: str | None = None,
+        num_predict: int = 256,
+        schema: dict[str, Any] | None = None,
+        num_ctx: int = 4096,
     ) -> str:
         payload: dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
-            "format": "json",
-            "options": {"temperature": 0, "num_predict": 256, "num_ctx": 4096},
+            "format": schema if schema is not None else "json",
+            "options": {"temperature": 0, "num_predict": num_predict, "num_ctx": num_ctx},
         }
+
+        if schema is not None and self.model.split(":")[0].lower() in ("qwen3", "deepseek-r1"):
+            payload["think"] = False
 
         if system:
             payload["system"] = system
@@ -59,11 +73,16 @@ class OllamaClient:
 
         response.raise_for_status()
 
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise InvalidOllamaResponse("Ollama returned a non-JSON response envelope.") from exc
+        if not isinstance(data, dict):
+            raise InvalidOllamaResponse("Ollama response envelope must be an object.")
 
-        if data.get("done") is False:
-            raise ValueError("Ollama response was incomplete.")
+        if data.get("done") is False or data.get("done_reason") == "length":
+            raise IncompleteOllamaResponse("Ollama generation was incomplete or reached the output token limit.")
         value = data.get("response")
         if not isinstance(value, str):
-            raise ValueError("Ollama response must contain text.")
+            raise InvalidOllamaResponse("Ollama response must contain text.")
         return value.strip()

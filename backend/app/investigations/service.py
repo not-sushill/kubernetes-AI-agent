@@ -108,7 +108,7 @@ class InvestigationService:
             self.db.rollback()
             raise
 
-        return Investigation(
+        result = Investigation(
             id=record.id,
             target=target,
             status=investigation_status,
@@ -117,6 +117,14 @@ class InvestigationService:
             created_at=record.created_at,
             updated_at=record.updated_at,
         )
+
+        # Alert inbox is derived from saved findings; it does not send notifications.
+        from app.operations.jobs import record_alerts
+        try:
+            record_alerts(self.db, result, cluster_context)
+        except Exception:
+            self.db.rollback()
+        return result
 
     # ========================================================
     # GET

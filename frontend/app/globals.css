@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 216 33% 97%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --primary: 219 78% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 216 45% 95%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 216 40% 96%;
+    --muted-foreground: 215 22% 43%;
+
+    --accent: 216 70% 95%;
+    --accent-foreground: 225 64% 29%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 150 63% 33%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 42 92% 47%;
+    --warning-foreground: 30 95% 12%;
+
+    --border: 216 45% 89%;
+    --input: 216 45% 89%;
+    --ring: 219 78% 48%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 40% 9%;
+    --card-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 8%;
+
+    --secondary: 217 33% 14%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 40%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 142 71% 36%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 20 14% 8%;
+
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 217 91% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  .surface-grid {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.34) 1px, transparent 1px),
+      linear-gradient(
+        90deg,
+        hsl(var(--border) / 0.34) 1px,
+        transparent 1px
+      );
+
+    background-size: 28px 28px;
+  }
+}
+.brand-header { background: linear-gradient(110deg, #243981 0%, #263eb5 60%, #294cda 100%); }
+
+/* Explicit paired colors keep log text readable in either theme. */
+pre.log-content {
+  color: #1e293b;
+  background: #f8fafc;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 1rem;
+  min-height: 15rem;
+  max-height: 65vh;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre;
+  tab-size: 2;
+  color-scheme: light;
+}
+.dark pre.log-content { color: #e2e8f0; background: #0f172a; color-scheme: dark; }
+pre.log-content .log-line-number { color: #64748b; }
+.dark pre.log-content .log-line-number { color: #94a3b8; }
+pre.log-content.log-wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+pre.log-content::selection, pre.log-content *::selection { background: #bfdbfe; color: #0f172a; }
+pre.log-content:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+.surface-card { transition: box-shadow 180ms ease, border-color 180ms ease; }
+.surface-card:focus-within { border-color: hsl(var(--primary) / 0.4); }
+button, a, summary { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled):active { transform: translateY(1px); }
+summary { list-style-position: inside; }
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter { animation: page-enter 180ms ease-out; }
+  @keyframes page-enter { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

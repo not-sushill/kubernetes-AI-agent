@@ -103,6 +103,7 @@ def get_logs(
     previous: bool = False,
     tail: int | None = Query(default=200, ge=0, le=MAX_LOG_TAIL_LINES),
     since: str | None = None,
+    since_time: str | None = Query(default=None, max_length=64),
     timestamps: bool = False,
     service: PodService = Depends(get_pod_service),
 ) -> dict[str, Any]:
@@ -113,6 +114,7 @@ def get_logs(
         previous=previous,
         tail=tail,
         since=since,
+        **({"since_time": since_time} if since_time else {}),
         timestamps=timestamps,
     )
 

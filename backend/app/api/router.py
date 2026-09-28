@@ -92,3 +92,12 @@ api_router.include_router(
     investigations_router,
     prefix="/v1",
 )
+
+from app.api.routes.kubernetes.container_access import router as container_access_router
+api_router.include_router(container_access_router, prefix="/kubernetes")
+
+from app.remediation.router import router as remediation_router
+api_router.include_router(remediation_router)
+
+from app.operations.router import router as operations_router
+api_router.include_router(operations_router)

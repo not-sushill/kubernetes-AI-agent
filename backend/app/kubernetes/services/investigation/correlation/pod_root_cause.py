@@ -132,6 +132,8 @@ class PodRootCauseService:
             root_causes,
         )
 
+        self._detect_specific_request_and_database_errors(issues, root_causes)
+
         self._detect_authorization(
             issues,
             root_causes,
@@ -730,6 +732,27 @@ class PodRootCauseService:
     # AUTHORIZATION
     # =========================================================
 
+    def _specific_log_error(self, issue):
+        text = self._issue_text(issue).lower()
+        if 'invalid character found in the request target' in text:
+            return 'request'
+        if 'select command denied' in text and ('mysql' in text or '1142' in text):
+            return 'database'
+        return None
+
+    def _detect_specific_request_and_database_errors(self, issues, root_causes):
+        for kind in ('request','database'):
+            matches = [i for i in issues if self._specific_log_error(i)==kind]
+            if not matches: continue
+            request = kind=='request'
+            root_causes.append(self._root_cause(
+                title='Invalid HTTP request target rejected' if request else 'Database SELECT permission denied',
+                category='http' if request else 'database', severity='warning', confidence=90 if request else 95,
+                description=('The server rejected a malformed request target. This line does not establish an application outage, Kubernetes RBAC failure, or the origin of the malformed URL.' if request else 'MySQL denied SELECT for the reported connection and table. Verify the matched database account and grants; this is not evidence of Kubernetes RBAC failure.'),
+                evidence=self._evidence(matches),
+                recommended_actions=(['Correlate the request timestamp with access logs and current pod health.','Inspect request URL encoding and authentication redirect construction.','Determine whether the malformed request came from an application client or unrelated traffic.'] if request else ['Verify the database host, schema and account used by the application.','Ask the database owner to inspect the matched account and table-level SELECT privileges.','Review recent database grant or connection-configuration changes before modifying access.']),
+            ))
+
     def _detect_authorization(
         self,
         issues: list[dict[str, Any]],
@@ -738,7 +761,7 @@ class PodRootCauseService:
         authorization = [
             issue
             for issue in issues
-            if not self._is_probe_issue(issue) and (
+            if not self._is_probe_issue(issue) and not self._specific_log_error(issue) and (
                 "authorization"
                 in self._issue_text(issue).lower()
                 or "permission"
@@ -790,6 +813,7 @@ class PodRootCauseService:
             for issue in issues
             if (
                 issue.get("category") == "logs"
+                and not self._specific_log_error(issue)
                 and (
                     "fatal"
                     in self._issue_text(issue).lower()

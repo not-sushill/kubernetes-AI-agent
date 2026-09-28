@@ -1,0 +1,31 @@
+Resource detail fixes
+
+Stop the backend and frontend before extracting both folders into D:\projects\ai-kubernetes-agent. Existing local .env files are not included or overwritten.
+
+Backend terminal:
+cd D:\projects\ai-kubernetes-agent\backend
+& D:\projects\.venv\Scripts\python.exe -m pytest tests -q
+& D:\projects\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+Frontend terminal:
+cd D:\projects\ai-kubernetes-agent\frontend
+npm ci
+node --test tests/*.cjs
+npm run dev
+
+Validation: 119 backend tests, 12 frontend tests, production frontend build passed. Three existing unused import build warnings remain. Live cluster/UI checks require your environment.
+
+Check Service details (ports, selectors, events), Ingress details (rules, TLS), and Node details (conditions, metrics, events). Missing metrics display unavailable. Malformed detail payloads show an error instead of crashing on length.
+
+Includes the previous IST display, table sorting, persistent investigation state across navigation, history integration, and blue theme updates.
+
+Node events fix: executor adds kubectl itself; duplicate binary removed.
+Deployment YAML Apply now requires typing APPLY namespace/deployment. Restore requires RESTORE namespace/deployment backupId. API rejects absent or mismatched confirmation. Editing the draft and dry-run validation do not change cluster resources.
+
+This is an intentional confirmation step, not authentication or a multi-user approval/audit system. AI-generated remediation proposals, reviewed diffs, durable approvals bound to exact changes/context, and post-apply verification are not implemented. Node panel is currently detail/health inspection, not a saved AI investigation.
+
+Restore hotfix: accept generated timestamp IDs containing T; reject traversal. Frontend displays backend error detail; backend logs unexpected YAML errors with stack traces. Apply 500 root cause is not established from status-only logs. Inspect the existing failed request response in browser Developer Tools > Network; do not blindly repeat a live Apply.
+
+Rollout timeout update: kubectl waits 60 seconds; process limit is now 75 seconds. Applied YAML with unconfirmed rollout returns applied=true, success=false and a message with backup information retained. Actual apply command timeout reports outcome unknown (504); no automatic retry. Backend: 122 tests passed. Frontend unchanged from previous tested build.
+
+Confirmation dialog update: Confirm remains disabled until exact text is entered; Cancel/Escape abort. Backend confirmations remain required. Successful restore displays Rollback restored with the backup ID; incomplete rollout displays a separate unconfirmed message. Backend 122 tests; frontend 13 tests.

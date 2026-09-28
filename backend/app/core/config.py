@@ -75,6 +75,19 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
 
     OLLAMA_MODEL: str = "gemma3:4b"
+    # Optional Operations integrations. Credentials stay on the backend.
+    LOKI_URL: str = ""
+    LOKI_TOKEN: str = ""
+    LOKI_TENANT: str = ""
+    LOKI_LABEL_CLUSTER: str = "cluster"
+    LOKI_LABEL_NAMESPACE: str = "namespace"
+    LOKI_LABEL_POD: str = "pod"
+    LOKI_LABEL_CONTAINER: str = "container"
+    ALERT_WEBHOOK_URL: str = ""
+    CONSOLE_URL: str = "http://localhost:3000"
+    TEAM_USERS_JSON: str = "[]"
+    OPERATIONS_LOCK_PATH: str = str(BASE_DIR / ".operations-worker.lock")
+
     # ------------------------------------------------------------------
     # Pydantic Configuration
     # ------------------------------------------------------------------

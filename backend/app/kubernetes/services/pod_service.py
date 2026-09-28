@@ -71,6 +71,7 @@ class PodService:
         tail: int | None = None,
         since: str | None = None,
         timestamps: bool = False,
+        since_time: str | None = None,
     ) -> dict[str, Any]:
         try:
             result = self.client.logs(
@@ -81,6 +82,7 @@ class PodService:
                 tail=tail,
                 since=since,
                 timestamps=timestamps,
+                **({"since_time": since_time} if since_time else {}),
             )
 
             lines = result.stdout.splitlines()
@@ -96,6 +98,7 @@ class PodService:
             }
 
         except Exception as exc:
+            detail = (getattr(exc, "stderr", "") or str(exc)).strip()[:2000]
             if previous:
                 return {
                     "pod": pod,
@@ -106,7 +109,7 @@ class PodService:
                     "line_count": 0,
                     "logs": [],
                     "message": (
-                        f"Previous logs unavailable: {exc}"
+                        f"Previous logs unavailable: {detail}"
                     ),
                 }
 
@@ -118,7 +121,7 @@ class PodService:
                 "available": False,
                 "line_count": 0,
                 "logs": [],
-                "message": str(exc),
+                "message": detail,
             }
 
     def get_events(

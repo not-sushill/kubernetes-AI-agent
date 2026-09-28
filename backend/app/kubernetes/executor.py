@@ -6,6 +6,9 @@ All kubectl commands must pass through this class.
 
 from __future__ import annotations
 
+from contextvars import ContextVar
+bound_context: ContextVar[str | None] = ContextVar("bound_context", default=None)
+
 import subprocess
 import time
 
@@ -38,6 +41,9 @@ class KubectlExecutor:
         stdin: str | None = None,
         timeout: int | None = None,
     ) -> CommandResult:
+        context = bound_context.get()
+        if context and args and args[0] != "config" and "--context" not in args:
+            args = ["--context", context, *args]
         command = [KUBECTL_BINARY, *args]
 
         effective_timeout = timeout or self.timeout

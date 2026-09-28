@@ -201,6 +201,9 @@ class AIService:
             root_causes
         )
 
+        if not deterministic_root_causes:
+            return self._no_established_cause()
+
         supporting_diagnostics = self._build_ai_diagnostics(
             diagnostics=diagnostics,
             root_causes=deterministic_root_causes,
@@ -1031,7 +1034,7 @@ class AIService:
         ) for item in root_causes]
         limitations = list(diagnosis.limitations)
         if not causes:
-            limitations.append("No deterministic root cause was established; AI narrative and suggestions are unverified.")
+            return cls._no_established_cause()
         return diagnosis.model_copy(update={"root_causes": causes,
             "limitations": limitations,
             "summary": (("Verified findings: " + "; ".join(c.title for c in causes) + ". AI explanation: ") if causes else "AI interpretation (unverified): ") + diagnosis.summary})
@@ -1039,6 +1042,18 @@ class AIService:
     # ============================================================
     # FALLBACK DIAGNOSIS
     # ============================================================
+
+    @staticmethod
+    def _no_established_cause():
+        return AIDiagnosis(
+            summary="No deterministic root cause was established from the collected evidence.",
+            severity="INFO", confidence=0, root_causes=[], recommendations=[],
+            limitations=[
+                "No AI explanation was generated because there was no established root cause to explain.",
+                "Absence of a detected root cause does not establish application health or exclude an incident.",
+                "Confidence 0 means no root-cause confidence was assigned; it is not a health score.",
+            ],
+        )
 
     @classmethod
     def _fallback_diagnosis(

@@ -326,6 +326,7 @@ class KubectlClient:
         tail: int | None = None,
         since: str | None = None,
         timestamps: bool = False,
+        since_time: str | None = None,
     ) -> CommandResult:
         """
         Get pod logs.
@@ -358,6 +359,20 @@ class KubectlClient:
                     str(validated_tail),
                 ]
             )
+
+        if since_time:
+            from datetime import datetime
+            from app.kubernetes.exceptions import InvalidKubectlArgumentError
+            import re
+            if since:
+                raise InvalidKubectlArgumentError("Choose since or since_time, not both.")
+            try:
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})", since_time):
+                    raise ValueError()
+                datetime.fromisoformat(since_time.replace('Z','+00:00'))
+            except ValueError as exc:
+                raise InvalidKubectlArgumentError("since_time must be an RFC3339 date with timezone.") from exc
+            command.extend(['--since-time', since_time])
 
         validated_since = validate_since_duration(since)
 

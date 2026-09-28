@@ -6,3 +6,8 @@ class PodLogsResponse(BaseModel):
     namespace: str
     line_count: int
     logs: list[str]
+
+    container: str | None = None
+    previous: bool = False
+    available: bool = True
+    message: str | None = None

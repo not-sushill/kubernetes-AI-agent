@@ -23,7 +23,14 @@ async def lifespan(app: FastAPI):
     app_logger.info(f"Version     : {settings.APP_VERSION}")
     app_logger.info("=" * 70)
 
-    yield
+    from app.operations.jobs import start_worker, stop_worker
+    from app.operations.security import configured_users
+    configured_users()
+    start_worker()
+    try:
+        yield
+    finally:
+        stop_worker()
 
     app_logger.info("=" * 70)
     app_logger.info("Application shutdown completed")
@@ -38,10 +45,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from app.operations.security import TeamAccessMiddleware
+app.add_middleware(TeamAccessMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
